@@ -3,10 +3,29 @@
  * Licensed under the MIT License.
  */
 
-import { Permissions, WebHost } from '@microsoft/mixed-reality-extension-sdk';
+import * as MRE from '@microsoft/mixed-reality-extension-sdk'
 import dotenv from 'dotenv';
+import fs from 'fs'
 import { resolve as resolvePath } from 'path';
+
 import App from './app';
+import { DefaultEnv } from './types'
+
+
+//if the .env configuration file doesn't exist create it using defaults
+if (!fs.existsSync('.env')) { 
+	const defaults = new DefaultEnv
+	let defaultString = ''
+	for (let key in defaults) {
+		if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+			const value = defaults[key]
+			defaultString += `${key}=${value}\n`
+		}
+	}
+	fs.writeFileSync('.env', defaultString)
+	MRE.log.info('app', "created the default .env")
+}
+
 
 /* eslint-disable no-console */
 process.on('uncaughtException', err => console.log('uncaughtException', err));
@@ -21,12 +40,18 @@ dotenv.config();
 // small delay is introduced allowing time for the debugger to attach before
 // the server starts accepting connections.
 function runApp() {
+  //log that the app is starting
+  MRE.log.info('app', "starting server")
+  
   // Start listening for connections, and serve static files.
-  const server = new WebHost({
-    // baseUrl: 'http://<ngrok-id>.ngrok.io',
+  const server = new MRE.WebHost({
+    baseUrl: `${process.env.BASE_URL}:${parseInt(process.env.PORT)}`,
     baseDir: resolvePath(__dirname, '../public'),
-    permissions: [Permissions.UserInteraction, Permissions.UserTracking]
+		port: (process.env.PORT),
+    permissions: [MRE.Permissions.UserInteraction, MRE.Permissions.UserTracking]
   });
+
+	MRE.log.info('app', "server started: ", server)
 
   // Handle new application sessions
   server.adapter.onConnection((context, params) => new App(context, params, server.baseUrl));
